@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../hooks/useAuth'
 import { getReportsByPatient } from '../../services/reportService'
 import Table from '../../components/ui/Table'
 import Button from '../../components/ui/Button'

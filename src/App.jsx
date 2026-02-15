@@ -1,5 +1,5 @@
 import { Toaster } from 'react-hot-toast'
-import { AuthProvider } from './context/AuthContext'
+import { AuthProvider } from './context/AuthContext.jsx'
 import AppRouter from './router/AppRouter'
 
 const App = () => {

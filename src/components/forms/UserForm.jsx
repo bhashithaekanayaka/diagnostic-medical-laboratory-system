@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { createUser, updateUser } from '../../services/userService'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../hooks/useAuth'
 import { logActivity } from '../../services/activityLogService'
 import Input from '../ui/Input'
 import Select from '../ui/Select'

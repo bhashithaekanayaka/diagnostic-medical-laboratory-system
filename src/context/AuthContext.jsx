@@ -1,8 +1,7 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { onAuthStateChange, getUserData } from '../services/authService'
 import { ROLES } from '../utils/roleConstants'
-
-const AuthContext = createContext(null)
+import { AuthContext } from './authContext'
 
 // Development mode check
 const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development'
@@ -16,8 +15,8 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Skip Firebase auth if in mock mode (development bypass)
+    // Loading state is handled by setMockUser when entering mock mode
     if (isMockMode) {
-      setLoading(false)
       return
     }
 
@@ -110,13 +109,5 @@ export const AuthProvider = ({ children }) => {
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-export const useAuth = () => {
-  const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
-  return context
 }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getTestOrder, getTestResultsByOrder, saveTestResult } from '../../services/testService'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../hooks/useAuth'
 import { logActivity } from '../../services/activityLogService'
 import Input from '../ui/Input'
 import Button from '../ui/Button'

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getAllSamples, createSample, updateSampleStatus } from '../../services/testService'
 import { getAllPatients } from '../../services/patientService'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../hooks/useAuth'
 import { logActivity } from '../../services/activityLogService'
 import Button from '../../components/ui/Button'
 import Table from '../../components/ui/Table'
