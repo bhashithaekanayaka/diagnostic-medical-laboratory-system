@@ -94,7 +94,7 @@ The bypass is **completely disabled** in production:
 
 ---
 
-## Old Method (If You Need Real Firebase Testing)
+## Alternative Method (If You Need Real Firebase Testing)
 
 If you need to test with real Firebase authentication (for testing Firestore rules, etc.), you can use the regular login form. To set up test accounts:
 
@@ -206,7 +206,7 @@ If you need to test with real Firebase authentication (for testing Firestore rul
    - The system will automatically log you in with the corresponding test account
    - You'll be redirected to the appropriate dashboard
 
-### Customizing Test Accounts
+### Customizing Test Accounts (Firebase Method)
 
 To change test account credentials, edit `src/pages/auth/Login.jsx`:
 
@@ -229,11 +229,7 @@ const TEST_ACCOUNTS = {
 - Never commit test account credentials to production
 - Test accounts should have limited permissions in production Firebase projects
 
-### Troubleshooting
-
-**Quick login not appearing:**
-- Ensure you're running in development mode (`npm run dev`)
-- Check that `import.meta.env.DEV` is `true`
+### Troubleshooting (Firebase Method)
 
 **Quick login fails:**
 - Verify test accounts exist in Firebase Authentication
