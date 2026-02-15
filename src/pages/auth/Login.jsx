@@ -8,6 +8,38 @@ import Button from '../../components/ui/Button'
 import Loader from '../../components/ui/Loader'
 import toast from 'react-hot-toast'
 
+// Development mode check
+const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development'
+
+// Test accounts for development (update these with your actual test user emails)
+const TEST_ACCOUNTS = {
+  admin: {
+    email: 'admin@test.com',
+    password: 'admin123',
+    role: ROLES.ADMIN,
+  },
+  doctor: {
+    email: 'doctor@test.com',
+    password: 'doctor123',
+    role: ROLES.DOCTOR,
+  },
+  staff: {
+    email: 'staff@test.com',
+    password: 'staff123',
+    role: ROLES.STAFF,
+  },
+  technician: {
+    email: 'technician@test.com',
+    password: 'tech123',
+    role: ROLES.TECHNICIAN,
+  },
+  patient: {
+    email: 'patient@test.com',
+    password: 'patient123',
+    role: ROLES.PATIENT,
+  },
+}
+
 const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -49,6 +81,32 @@ const Login = () => {
         errorMessage = 'Too many failed attempts. Please try again later.'
       }
       toast.error(errorMessage)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleQuickLogin = async (accountType) => {
+    if (!isDevelopment) {
+      toast.error('Quick login is only available in development mode')
+      return
+    }
+
+    const testAccount = TEST_ACCOUNTS[accountType]
+    if (!testAccount) {
+      toast.error('Invalid test account type')
+      return
+    }
+
+    setLoading(true)
+    try {
+      await signIn(testAccount.email, testAccount.password)
+      toast.success(`Logged in as ${testAccount.role}`)
+    } catch (error) {
+      console.error('Quick login error:', error)
+      toast.error(
+        `Quick login failed. Please ensure test account exists:\n${testAccount.email}`
+      )
     } finally {
       setLoading(false)
     }
@@ -103,6 +161,70 @@ const Login = () => {
           )}
         </Button>
       </form>
+
+      {/* Development Quick Login Section */}
+      {isDevelopment && (
+        <div className="mt-8 pt-6 border-t border-gray-200">
+          <p className="text-xs text-gray-500 text-center mb-4">
+            🛠️ Development Mode - Quick Login
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => handleQuickLogin('admin')}
+              disabled={loading}
+              className="text-xs"
+            >
+              👑 Admin
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => handleQuickLogin('doctor')}
+              disabled={loading}
+              className="text-xs"
+            >
+              👨‍⚕️ Doctor
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => handleQuickLogin('staff')}
+              disabled={loading}
+              className="text-xs"
+            >
+              👤 Staff
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => handleQuickLogin('technician')}
+              disabled={loading}
+              className="text-xs"
+            >
+              🔧 Technician
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => handleQuickLogin('patient')}
+              disabled={loading}
+              className="text-xs col-span-2"
+            >
+              🏥 Patient
+            </Button>
+          </div>
+          <p className="text-xs text-gray-400 text-center mt-3">
+            Note: Test accounts must exist in Firebase Auth
+          </p>
+        </div>
+      )}
     </div>
   )
 }
