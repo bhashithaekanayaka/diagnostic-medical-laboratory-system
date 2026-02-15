@@ -1,1 +1,25 @@
 @import "tailwindcss";
+
+/* Material Icons */
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
+/* Inter Font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Custom Colors */
+:root {
+  --primary: #113fd4;
+  --medical-navy: #0F172A;
+  --background-light: #f6f6f8;
+  --background-dark: #101422;
+}
+
+/* Tailwind Config Extension */
+@theme {
+  --color-primary: var(--primary);
+  --color-medical-navy: var(--medical-navy);
+  --color-background-light: var(--background-light);
+  --color-background-dark: var(--background-dark);
+  --font-display: 'Inter', sans-serif;
+}
