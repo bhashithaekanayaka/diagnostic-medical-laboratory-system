@@ -1,12 +1,102 @@
 # Development Setup Guide
 
-## Quick Login for Development
+## Quick Login for Development (No Database Required!)
 
-The login page includes a development-only quick login section that allows you to quickly test different user roles without manually entering credentials.
+The login page includes a development-only quick login section that allows you to quickly test different user roles **without any Firebase setup or database checks**. This completely bypasses Firebase Authentication and Firestore.
 
-### Setting Up Test Accounts
+### How It Works
 
-To use the quick login feature, you need to create test user accounts in Firebase Authentication:
+The bypass login:
+- ✅ **No Firebase Authentication required**
+- ✅ **No Firestore database checks**
+- ✅ **No test accounts to create**
+- ✅ **Instant login** - just click a button
+- ✅ **Only works in development mode** - automatically disabled in production
+
+### No Setup Required!
+
+Unlike the previous version, you **don't need to**:
+- Create test users in Firebase Authentication
+- Create user documents in Firestore
+- Set up any credentials
+
+Just click the role button and you're logged in instantly!
+
+### Using Quick Login
+
+1. **Start Development Server**
+   ```bash
+   npm run dev
+   ```
+
+2. **Navigate to Login Page**
+   - The quick login section appears automatically in development mode
+   - It's located below the regular login form
+
+3. **Click Role Buttons**
+   - Click any role button (Admin, Doctor, Staff, Technician, Patient)
+   - You'll be instantly logged in with that role
+   - You'll be redirected to the appropriate dashboard
+
+### Customizing Test Users
+
+To change the test user names, edit `src/pages/auth/Login.jsx`:
+
+```javascript
+const TEST_ACCOUNTS = {
+  admin: {
+    role: ROLES.ADMIN,
+    // The fullName is set in handleQuickLogin
+  },
+  // ... other roles
+}
+```
+
+And modify the `setMockUser` call:
+```javascript
+setMockUser(testAccount.role, 'Your Custom Name Here')
+```
+
+### Technical Details
+
+The bypass works by:
+1. Setting a mock user object directly in the AuthContext
+2. Bypassing all Firebase Authentication calls
+3. Skipping all Firestore database queries
+4. Setting the user role and data directly in memory
+
+This means:
+- ⚠️ **Firestore Security Rules won't apply** (since we're not using Firebase)
+- ⚠️ **Real Firebase operations will fail** (since there's no real user)
+- ✅ **Perfect for UI/UX testing** without backend setup
+- ✅ **Fast development iteration**
+
+### Production Safety
+
+The bypass is **completely disabled** in production:
+- The `setMockUser` function is not exposed in production builds
+- The quick login buttons don't appear in production
+- All production code uses real Firebase authentication
+
+### Troubleshooting
+
+**Quick login not appearing:**
+- Ensure you're running in development mode (`npm run dev`)
+- Check that `import.meta.env.DEV` is `true`
+
+**Wrong dashboard after login:**
+- The role should be set correctly automatically
+- Clear browser cache and try again
+
+**Firebase operations fail after bypass login:**
+- This is expected! The bypass creates a mock user, not a real Firebase user
+- For testing Firebase features, use the regular login form with real accounts
+
+---
+
+## Old Method (If You Need Real Firebase Testing)
+
+If you need to test with real Firebase authentication (for testing Firestore rules, etc.), you can use the regular login form. To set up test accounts:
 
 1. **Go to Firebase Console**
    - Navigate to Authentication > Users

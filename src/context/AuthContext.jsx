@@ -4,13 +4,23 @@ import { ROLES } from '../utils/roleConstants'
 
 const AuthContext = createContext(null)
 
+// Development mode check
+const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development'
+
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null)
   const [userRole, setUserRole] = useState(null)
   const [userData, setUserData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [isMockMode, setIsMockMode] = useState(false)
 
   useEffect(() => {
+    // Skip Firebase auth if in mock mode (development bypass)
+    if (isMockMode) {
+      setLoading(false)
+      return
+    }
+
     const unsubscribe = onAuthStateChange(async (firebaseUser) => {
       if (firebaseUser) {
         try {
@@ -51,7 +61,39 @@ export const AuthProvider = ({ children }) => {
     })
 
     return () => unsubscribe()
-  }, [])
+  }, [isMockMode])
+
+  // Development bypass function - sets mock user without Firebase
+  const setMockUser = (role, fullName = 'Test User') => {
+    if (!isDevelopment) {
+      console.warn('Mock user can only be set in development mode')
+      return
+    }
+
+    const mockUser = {
+      uid: `mock-${role.toLowerCase()}-${Date.now()}`,
+      email: `${role.toLowerCase()}@test.com`,
+      displayName: fullName,
+    }
+
+    const mockUserData = {
+      id: mockUser.uid,
+      user_id: mockUser.uid,
+      full_name: fullName,
+      email: mockUser.email,
+      role: role,
+      status: 'Active',
+      phone: '',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    setIsMockMode(true)
+    setCurrentUser(mockUser)
+    setUserRole(role)
+    setUserData(mockUserData)
+    setLoading(false)
+  }
 
   const value = {
     currentUser,
@@ -64,6 +106,7 @@ export const AuthProvider = ({ children }) => {
     isTechnician: userRole === ROLES.TECHNICIAN,
     isStaff: userRole === ROLES.STAFF || userRole === ROLES.TECHNICIAN,
     isPatient: userRole === ROLES.PATIENT,
+    setMockUser: isDevelopment ? setMockUser : undefined, // Only expose in development
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

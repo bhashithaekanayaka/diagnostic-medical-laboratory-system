@@ -45,7 +45,7 @@ const Login = () => {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
-  const { userRole, loading: authLoading } = useAuth()
+  const { userRole, loading: authLoading, setMockUser } = useAuth()
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -86,9 +86,14 @@ const Login = () => {
     }
   }
 
-  const handleQuickLogin = async (accountType) => {
+  const handleQuickLogin = (accountType) => {
     if (!isDevelopment) {
       toast.error('Quick login is only available in development mode')
+      return
+    }
+
+    if (!setMockUser) {
+      toast.error('Mock user function not available')
       return
     }
 
@@ -98,18 +103,22 @@ const Login = () => {
       return
     }
 
-    setLoading(true)
-    try {
-      await signIn(testAccount.email, testAccount.password)
-      toast.success(`Logged in as ${testAccount.role}`)
-    } catch (error) {
-      console.error('Quick login error:', error)
-      toast.error(
-        `Quick login failed. Please ensure test account exists:\n${testAccount.email}`
-      )
-    } finally {
-      setLoading(false)
-    }
+    // Bypass Firebase completely - set mock user directly
+    setMockUser(testAccount.role, `${testAccount.role} User`)
+    toast.success(`Logged in as ${testAccount.role} (Development Mode)`)
+
+    // Navigate based on role
+    setTimeout(() => {
+      if (testAccount.role === ROLES.ADMIN) {
+        navigate('/admin/dashboard', { replace: true })
+      } else if (testAccount.role === ROLES.DOCTOR) {
+        navigate('/doctor/dashboard', { replace: true })
+      } else if (testAccount.role === ROLES.TECHNICIAN || testAccount.role === ROLES.STAFF) {
+        navigate('/staff/dashboard', { replace: true })
+      } else if (testAccount.role === ROLES.PATIENT) {
+        navigate('/patient/portal', { replace: true })
+      }
+    }, 100)
   }
 
   return (
@@ -221,7 +230,7 @@ const Login = () => {
             </Button>
           </div>
           <p className="text-xs text-gray-400 text-center mt-3">
-            Note: Test accounts must exist in Firebase Auth
+            ⚡ Bypasses Firebase - No database check required
           </p>
         </div>
       )}
