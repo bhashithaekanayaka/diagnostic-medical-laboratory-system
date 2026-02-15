@@ -1,0 +1,350 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to get user data
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    // Helper function to check user role
+    function hasRole(role) {
+      return request.auth != null && 
+             getUserData().role == role;
+    }
+    
+    // Helper function to check if user has any of the specified roles
+    function hasAnyRole(roles) {
+      return request.auth != null && 
+             getUserData().role in roles;
+    }
+    
+    // Helper function to check if user is active
+    function isUserActive() {
+      return request.auth != null && 
+             getUserData().status == 'Active';
+    }
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return isUserActive() && hasRole('Admin');
+    }
+    
+    // Helper function to check if user is doctor
+    function isDoctor() {
+      return isUserActive() && hasRole('Doctor');
+    }
+    
+    // Helper function to check if user is staff or technician
+    function isStaff() {
+      return isUserActive() && hasAnyRole(['Technician', 'Staff']);
+    }
+    
+    // Helper function to check if user is patient
+    function isPatient() {
+      return isUserActive() && hasRole('Patient');
+    }
+    
+    // Note: Helper functions cannot access 'resource' or 'request' directly
+    // These must be checked inline in allow rules
+    
+    // ============================================
+    // USERS COLLECTION
+    // ============================================
+    match /users/{userId} {
+      // Read: Authenticated users can read their own data, admins can read all
+      allow read: if request.auth != null && 
+                     (request.auth.uid == userId || isAdmin());
+      
+      // Create: Only admins can create users
+      allow create: if isAdmin() &&
+                       request.resource.data.keys().hasAll(['user_id', 'full_name', 'email', 'role', 'status']) &&
+                       request.resource.data.user_id == request.auth.uid &&
+                       request.resource.data.role in ['Admin', 'Doctor', 'Technician', 'Staff', 'Patient'] &&
+                       request.resource.data.status in ['Active', 'Inactive', 'Suspended'] &&
+                       'createdAt' in request.resource.data &&
+                       'updatedAt' in request.resource.data;
+      
+      // Update: Only admins can update users, cannot change user_id
+      allow update: if isAdmin() &&
+                       request.resource.data.user_id == resource.data.user_id &&
+                       request.resource.data.role in ['Admin', 'Doctor', 'Technician', 'Staff', 'Patient'] &&
+                       request.resource.data.status in ['Active', 'Inactive', 'Suspended'] &&
+                       'updatedAt' in request.resource.data;
+      
+      // Delete: Soft delete only, admins only
+      allow delete: if false; // Hard delete not allowed, use soft delete
+    }
+    
+    // ============================================
+    // PATIENTS COLLECTION
+    // ============================================
+    match /patients/{patientId} {
+      // Read: Authenticated staff, doctors, and admins can read
+      allow read: if isUserActive() && 
+                   (isAdmin() || isDoctor() || isStaff());
+      
+      // Create: Staff, technicians, and admins can create patients
+      allow create: if (isAdmin() || isStaff()) &&
+                       request.resource.data.keys().hasAll(['patient_id', 'full_name', 'nic', 'date_of_birth', 'gender', 'phone', 'status']) &&
+                       request.resource.data.status in ['Active', 'Inactive', 'Disabled'] &&
+                       request.resource.data.isDeleted == false &&
+                       request.resource.data.nic is string &&
+                       request.resource.data.phone is string &&
+                       (!('email' in request.resource.data) || request.resource.data.email is string) &&
+                       'createdAt' in request.resource.data &&
+                       'updatedAt' in request.resource.data &&
+                       'createdBy' in request.resource.data;
+      
+      // Update: Staff, technicians, and admins can update patients
+      allow update: if (isAdmin() || isStaff()) &&
+                       request.resource.data.patient_id == resource.data.patient_id &&
+                       request.resource.data.status in ['Active', 'Inactive', 'Disabled'] &&
+                       'updatedAt' in request.resource.data &&
+                       'updatedBy' in request.resource.data;
+      
+      // Delete: Soft delete only
+      allow delete: if false; // Hard delete not allowed
+    }
+    
+    // ============================================
+    // SAMPLES COLLECTION
+    // ============================================
+    match /samples/{sampleId} {
+      // Read: Staff, doctors, and admins can read
+      allow read: if isUserActive() && 
+                   (isAdmin() || isDoctor() || isStaff());
+      
+      // Create: Staff, technicians, and admins can create samples
+      allow create: if (isAdmin() || isStaff()) &&
+                       request.resource.data.keys().hasAll(['sample_id', 'patient_id', 'sample_type', 'collection_date', 'status']) &&
+                       request.resource.data.status in ['Pending', 'Collected', 'Rejected', 'Processed'] &&
+                       request.resource.data.isDeleted == false &&
+                       'createdAt' in request.resource.data &&
+                       'updatedAt' in request.resource.data &&
+                       'collected_by' in request.resource.data;
+      
+      // Update: Staff, technicians, and admins can update samples
+      allow update: if (isAdmin() || isStaff()) &&
+                       request.resource.data.sample_id == resource.data.sample_id &&
+                       request.resource.data.status in ['Pending', 'Collected', 'Rejected', 'Processed'] &&
+                       'updatedAt' in request.resource.data;
+      
+      // Delete: Soft delete only
+      allow delete: if false;
+    }
+    
+    // ============================================
+    // TEST ORDERS COLLECTION
+    // ============================================
+    match /testOrders/{orderId} {
+      // Read: Staff, doctors, and admins can read
+      allow read: if isUserActive() && 
+                   (isAdmin() || isDoctor() || isStaff());
+      
+      // Create: Staff, technicians, and admins can create test orders
+      allow create: if (isAdmin() || isStaff()) &&
+                       request.resource.data.keys().hasAll(['test_order_id', 'patient_id', 'sample_id', 'tests', 'status']) &&
+                       request.resource.data.status in ['Pending', 'In Progress', 'Completed', 'Cancelled'] &&
+                       request.resource.data.isDeleted == false &&
+                       request.resource.data.tests is list &&
+                       'createdAt' in request.resource.data &&
+                       'updatedAt' in request.resource.data &&
+                       'ordered_by' in request.resource.data;
+      
+      // Update: Staff, technicians, and admins can update test orders
+      allow update: if (isAdmin() || isStaff()) &&
+                       request.resource.data.test_order_id == resource.data.test_order_id &&
+                       request.resource.data.status in ['Pending', 'In Progress', 'Completed', 'Cancelled'] &&
+                       'updatedAt' in request.resource.data;
+      
+      // Delete: Soft delete only
+      allow delete: if false;
+    }
+    
+    // ============================================
+    // TEST RESULTS COLLECTION
+    // ============================================
+    match /testResults/{resultId} {
+      // Read: Staff, doctors, and admins can read
+      allow read: if isUserActive() && 
+                   (isAdmin() || isDoctor() || isStaff());
+      
+      // Create: Staff and technicians can create test results
+      allow create: if (isAdmin() || isStaff()) &&
+                       request.resource.data.keys().hasAll(['test_order_id', 'test_id', 'result_value', 'status']) &&
+                       request.resource.data.status in ['Draft', 'Pending Approval', 'Approved', 'Rejected', 'Returned'] &&
+                       request.resource.data.isDeleted == false &&
+                       request.resource.data.result_value is number &&
+                       'createdAt' in request.resource.data &&
+                       'updatedAt' in request.resource.data &&
+                       'entered_by' in request.resource.data;
+      
+      // Update: 
+      // - Staff can update if status is Draft or Returned
+      // - Doctors can update status to Approved/Rejected/Returned if status is Pending Approval
+      // - Admins can update any result
+      allow update: if (
+                       // Admin can update anything
+                       isAdmin() ||
+                       // Staff can update Draft or Returned results
+                       (isStaff() && 
+                        resource.data.status in ['Draft', 'Returned'] &&
+                        request.resource.data.test_order_id == resource.data.test_order_id &&
+                        request.resource.data.test_id == resource.data.test_id) ||
+                       // Doctor can approve/reject/return pending results
+                       (isDoctor() && 
+                        resource.data.status == 'Pending Approval' &&
+                        request.resource.data.status in ['Approved', 'Rejected', 'Returned'] &&
+                        request.resource.data.test_order_id == resource.data.test_order_id &&
+                        request.resource.data.test_id == resource.data.test_id &&
+                        request.resource.data.result_value == resource.data.result_value &&
+                        // If rejecting, rejection_reason must be provided
+                        (request.resource.data.status != 'Rejected' || 
+                         ('rejection_reason' in request.resource.data && 
+                          request.resource.data.rejection_reason is string &&
+                          request.resource.data.rejection_reason.size() > 0)) &&
+                        // If approving, approved_by and approved_at must be set
+                        (request.resource.data.status != 'Approved' ||
+                         ('approved_by' in request.resource.data && 
+                          'approved_at' in request.resource.data))) ||
+                       // Approved results are immutable except by admin
+                       (isAdmin() && resource.data.status == 'Approved')
+                     ) &&
+                     'updatedAt' in request.resource.data &&
+                     'updatedBy' in request.resource.data;
+      
+      // Delete: Soft delete only
+      allow delete: if false;
+    }
+    
+    // ============================================
+    // INVENTORY COLLECTION
+    // ============================================
+    match /inventory/{itemId} {
+      // Read: Staff, doctors, and admins can read
+      allow read: if isUserActive() && 
+                   (isAdmin() || isDoctor() || isStaff());
+      
+      // Create: Only admins can create inventory items
+      allow create: if isAdmin() &&
+                       request.resource.data.keys().hasAll(['item_name', 'category', 'quantity', 'unit', 'reorder_level', 'status']) &&
+                       request.resource.data.status in ['Available', 'Low Stock', 'Out of Stock', 'Expired'] &&
+                       request.resource.data.quantity is number &&
+                       request.resource.data.reorder_level is number &&
+                       request.resource.data.isDeleted == false &&
+                       'createdAt' in request.resource.data &&
+                       'updatedAt' in request.resource.data &&
+                       'createdBy' in request.resource.data;
+      
+      // Update: Only admins can update inventory
+      allow update: if isAdmin() &&
+                       request.resource.data.status in ['Available', 'Low Stock', 'Out of Stock', 'Expired'] &&
+                       request.resource.data.quantity is number &&
+                       request.resource.data.reorder_level is number &&
+                       'updatedAt' in request.resource.data &&
+                       'updatedBy' in request.resource.data;
+      
+      // Delete: Soft delete only
+      allow delete: if false;
+    }
+    
+    // ============================================
+    // INVOICES COLLECTION
+    // ============================================
+    match /invoices/{invoiceId} {
+      // Read: Staff, doctors, and admins can read
+      // Patients can read their own invoices (if patient_id matches their user_id)
+      allow read: if isUserActive() && 
+                   (isAdmin() || isDoctor() || isStaff() ||
+                    (isPatient() && resource.data.patient_id == request.auth.uid));
+      
+      // Create: Staff, technicians, and admins can create invoices
+      allow create: if (isAdmin() || isStaff()) &&
+                       request.resource.data.keys().hasAll(['invoice_id', 'patient_id', 'items', 'subtotal', 'total', 'status']) &&
+                       request.resource.data.status in ['Pending', 'Paid', 'Partial', 'Overdue', 'Cancelled'] &&
+                       request.resource.data.items is list &&
+                       request.resource.data.subtotal is number &&
+                       request.resource.data.total is number &&
+                       request.resource.data.tax is number &&
+                       request.resource.data.discount is number &&
+                       request.resource.data.isDeleted == false &&
+                       'createdAt' in request.resource.data &&
+                       'updatedAt' in request.resource.data &&
+                       'created_by' in request.resource.data;
+      
+      // Update: Staff, technicians, and admins can update invoices
+      allow update: if (isAdmin() || isStaff()) &&
+                       request.resource.data.invoice_id == resource.data.invoice_id &&
+                       request.resource.data.status in ['Pending', 'Paid', 'Partial', 'Overdue', 'Cancelled'] &&
+                       request.resource.data.total is number &&
+                       'updatedAt' in request.resource.data &&
+                       'updatedBy' in request.resource.data;
+      
+      // Delete: Soft delete only
+      allow delete: if false;
+    }
+    
+    // ============================================
+    // REPORTS COLLECTION
+    // ============================================
+    match /reports/{reportId} {
+      // Read: Staff, doctors, and admins can read all reports
+      // Patients can read their own reports (if patient_id matches their user_id)
+      allow read: if isUserActive() && 
+                   (isAdmin() || isDoctor() || isStaff() ||
+                    (isPatient() && resource.data.patient_id == request.auth.uid));
+      
+      // Create: Staff, technicians, doctors, and admins can create reports
+      allow create: if (isAdmin() || isDoctor() || isStaff()) &&
+                       request.resource.data.keys().hasAll(['report_id', 'patient_id', 'report_type', 'file_url']) &&
+                       request.resource.data.file_url is string &&
+                       request.resource.data.isDeleted == false &&
+                       'createdAt' in request.resource.data &&
+                       'updatedAt' in request.resource.data &&
+                       'generated_by' in request.resource.data;
+      
+      // Update: Only admins can update reports
+      allow update: if isAdmin() &&
+                       request.resource.data.report_id == resource.data.report_id &&
+                       'updatedAt' in request.resource.data &&
+                       'updatedBy' in request.resource.data;
+      
+      // Delete: Soft delete only, admins only
+      allow delete: if false;
+    }
+    
+    // ============================================
+    // ACTIVITY LOGS COLLECTION
+    // ============================================
+    match /activityLogs/{logId} {
+      // Read: All authenticated users can read activity logs
+      // (for transparency and audit purposes)
+      allow read: if isUserActive();
+      
+      // Create: Only system can create logs (via server-side code)
+      // In practice, this should be done via Cloud Functions
+      // For now, allow authenticated users to create logs (they should only log their own actions)
+      allow create: if isUserActive() &&
+                       request.resource.data.keys().hasAll(['log_id', 'user_id', 'entity_type', 'action', 'entity_id']) &&
+                       request.resource.data.user_id == request.auth.uid &&
+                       request.resource.data.entity_type is string &&
+                       request.resource.data.action is string &&
+                       'timestamp' in request.resource.data;
+      
+      // Update: No updates allowed (logs are immutable)
+      allow update: if false;
+      
+      // Delete: No deletes allowed (logs are permanent)
+      allow delete: if false;
+    }
+    
+    // ============================================
+    // DEFAULT DENY RULE
+    // ============================================
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

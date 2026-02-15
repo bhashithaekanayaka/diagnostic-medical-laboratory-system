@@ -1,0 +1,118 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to get user data from Firestore
+    function getUserData() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    // Helper function to check user role
+    function hasRole(role) {
+      return isAuthenticated() && 
+             getUserData().role == role;
+    }
+    
+    // Helper function to check if user has any of the specified roles
+    function hasAnyRole(roles) {
+      return isAuthenticated() && 
+             getUserData().role in roles;
+    }
+    
+    // Helper function to check if user is active
+    function isUserActive() {
+      return isAuthenticated() && 
+             getUserData().status == 'Active';
+    }
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return isUserActive() && hasRole('Admin');
+    }
+    
+    // Helper function to check if user is staff or technician
+    function isStaff() {
+      return isUserActive() && hasAnyRole(['Technician', 'Staff']);
+    }
+    
+    // Helper function to check if user is doctor
+    function isDoctor() {
+      return isUserActive() && hasRole('Doctor');
+    }
+    
+    // ============================================
+    // REPORTS STORAGE
+    // ============================================
+    match /reports/{reportId}/{fileName} {
+      // Read: Staff, doctors, admins, and patients (for their own reports)
+      allow read: if isUserActive() && 
+                     (isAdmin() || isDoctor() || isStaff() || 
+                      // Patients can read if report belongs to them
+                      (hasRole('Patient') && 
+                       reportId.matches('.*') && 
+                       firestore.get(/databases/(default)/documents/reports/$(reportId)).data.patient_id == request.auth.uid));
+      
+      // Write: Only staff, doctors, and admins can upload reports
+      allow write: if isUserActive() && 
+                     (isAdmin() || isDoctor() || isStaff()) &&
+                     request.resource.size < 10 * 1024 * 1024 && // 10MB limit
+                     request.resource.contentType.matches('application/pdf') &&
+                     fileName.matches('.*\\.pdf$');
+      
+      // Delete: Only admins can delete reports
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // PROFILE IMAGES (Optional - for future use)
+    // ============================================
+    match /profiles/{userId}/{fileName} {
+      // Users can read their own profile image
+      allow read: if isAuthenticated() && 
+                     (request.auth.uid == userId || isAdmin());
+      
+      // Users can upload their own profile image
+      allow write: if isAuthenticated() && 
+                     request.auth.uid == userId &&
+                     request.resource.size < 2 * 1024 * 1024 && // 2MB limit
+                     request.resource.contentType.matches('image/.*') &&
+                     fileName.matches('.*\\.(jpg|jpeg|png|gif|webp)$');
+      
+      // Users can delete their own profile image, admins can delete any
+      allow delete: if isAuthenticated() && 
+                       (request.auth.uid == userId || isAdmin());
+    }
+    
+    // ============================================
+    // SAMPLE ATTACHMENTS (Optional - for future use)
+    // ============================================
+    match /samples/{sampleId}/{fileName} {
+      // Staff, doctors, and admins can read sample attachments
+      allow read: if isUserActive() && 
+                     (isAdmin() || isDoctor() || isStaff());
+      
+      // Only staff and admins can upload sample attachments
+      allow write: if isUserActive() && 
+                     (isAdmin() || isStaff()) &&
+                     request.resource.size < 5 * 1024 * 1024 && // 5MB limit
+                     request.resource.contentType.matches('(image/.*|application/pdf)');
+      
+      // Only admins can delete sample attachments
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // DEFAULT DENY RULE
+    // ============================================
+    // Deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
