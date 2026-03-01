@@ -7,6 +7,7 @@ import Button from '../../components/ui/Button'
 import Loader from '../../components/ui/Loader'
 import DevBypassModal from '../../components/auth/DevBypassModal'
 import toast from 'react-hot-toast'
+import logo from "../../../public/logotrans.png";
 
 // Development mode check
 const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development'
@@ -84,19 +85,7 @@ const Login = () => {
         {/* Logo & Title Section */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 mb-4 bg-white rounded-xl shadow-sm border border-primary/10">
-            <svg
-              className="w-12 h-12 text-primary"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-10.038 0l-2.387.477a2 2 0 00-1.022.547M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
+             <img src={logo} alt="Logo" width="200" />
           </div>
           <h1 className="text-3xl font-bold text-medical-navy tracking-tight">
             Diagnostic LMS
